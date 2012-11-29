@@ -180,7 +180,7 @@ the position in the string of where they start."
 (defun gff-exit ()
   "Bail out."
   (interactive)
-  (kill-buffer "*git-find-file*")
+  (kill-buffer nil)
   (delete-window))
 
 
@@ -201,36 +201,39 @@ the position in the string of where they start."
       (find-file selection))))
 
 
-(defun gff-init (files)
+(defun gff-init (files &optional buffer-name score-fn)
   "Initialise the *git-find-file* buffer to display `files'."
-  (pop-to-buffer (get-buffer-create "*git-find-file*"))
+  (let ((buffer-name (or buffer-name "*git-find-file*"))
+        (score-fn (or score-fn 'gff-scorers-for)))
+    (pop-to-buffer (get-buffer-create buffer-name))
 
-  (set (make-local-variable 'gff-list) (sort* (coerce files 'vector) 'string<))
-  (set (make-local-variable 'gff-list-size) (length gff-list))
-  (set (make-local-variable 'gff-rotation) 0)
-  (set (make-local-variable 'gff-active-filter) "")
+    (set (make-local-variable 'gff-list) (sort* (coerce files 'vector) 'string<))
+    (set (make-local-variable 'gff-list-size) (length gff-list))
+    (set (make-local-variable 'gff-rotation) 0)
+    (set (make-local-variable 'gff-active-filter) "")
+    (set (make-local-variable 'gff-score-function) score-fn)
 
-  (set (make-local-variable 'gff-last-filtered-list) gff-list)
-  (set (make-local-variable 'gff-last-active-filter) "")
+    (set (make-local-variable 'gff-last-filtered-list) gff-list)
+    (set (make-local-variable 'gff-last-active-filter) "")
 
-  (set (make-local-variable 'gff-keypress-timer) nil)
+    (set (make-local-variable 'gff-keypress-timer) nil)
 
-  (let ((map (make-sparse-keymap)))
-    (loop for i from 32 to 127
-          do (define-key map (string i) 'gff-keypress))
-    (define-key map (kbd "DEL") 'gff-backspace)
-    (define-key map (kbd "RET") 'gff-select)
-    (define-key map (kbd "C-g") 'gff-exit)
-    (define-key map (kbd "C-u") 'gff-reset)
-    (define-key map (kbd "C-s") 'gff-rotate-list)
-    (use-local-map map))
+    (let ((map (make-sparse-keymap)))
+      (loop for i from 32 to 127
+            do (define-key map (string i) 'gff-keypress))
+      (define-key map (kbd "DEL") 'gff-backspace)
+      (define-key map (kbd "RET") 'gff-select)
+      (define-key map (kbd "C-g") 'gff-exit)
+      (define-key map (kbd "C-u") 'gff-reset)
+      (define-key map (kbd "C-s") 'gff-rotate-list)
+      (use-local-map map))
 
-  (gff-refresh-buffer))
+    (gff-refresh-buffer)))
 
 
 (defun gff-filter-list (pattern list)
   "Find matches for `pattern' in `list' and return an ordered result set"
-  (let* ((scorers (gff-scorers-for (downcase pattern)))
+  (let* ((scorers (funcall gff-score-function (downcase pattern)))
          (scored-results (map 'vector (lambda (elt)
                                         (cons (or (some (lambda (scorer)
                                                           (funcall scorer (downcase elt)))
