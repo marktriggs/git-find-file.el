@@ -250,7 +250,11 @@ the position in the string of where they start."
                               list))
          (sorted-results (sort*
                           (remove-if-not 'plusp scored-results :key 'car)
-                          '> :key 'car)))
+                          (lambda (r1 r2)
+                            ;; Higher score wins.  Shorter filename breaks the tie.
+                            (cond ((> (car r1) (car r2)) t)
+                                  ((< (car r1) (car r2)) nil)
+                                  (t (< (length (cdr r1)) (length (cdr r2)))))))))
     (map 'vector 'cdr sorted-results)))
 
 
