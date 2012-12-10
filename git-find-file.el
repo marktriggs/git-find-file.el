@@ -137,8 +137,8 @@ the position in the string of where they start."
          (files (split-string
                  (shell-command-to-string
                   (concat "("
-                          ;; tracked plus untracked files
-                          "git ls-files --other --cached --exclude-standard; "
+                          ;; tracked files
+                          "git ls-files; "
                           ;; and their directories
                           "git ls-tree --name-only -rd HEAD"
                           ")"))
