@@ -134,8 +134,15 @@ the position in the string of where they start."
              (expand-file-name
               (or (find-file-in-parent-dir ".git" default-directory)
                   (error "No .git directory found!"))))))
-         (files (split-string (shell-command-to-string "git ls-files")
-                              "\n" t)))
+         (files (split-string
+                 (shell-command-to-string
+                  (concat "("
+                          ;; tracked plus untracked files
+                          "git ls-files --other --cached --exclude-standard; "
+                          ;; and their directories
+                          "git ls-tree --name-only -rd HEAD"
+                          ")"))
+                 "\n" t)))
     (gff-init files)))
 
 
