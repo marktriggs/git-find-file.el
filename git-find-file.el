@@ -101,14 +101,12 @@ the position in the string of where they start."
 (defun gff-scorers-for (pattern)
   "Build a list of scorer functions that will match `pattern'"
   (list
-   `(lambda (s) (cond ((string= (file-name-nondirectory s) ,pattern) 1500)
-                      ((equal (search ,(concat pattern ".") (file-name-nondirectory s))
-                              0) 1150)
-                      ((equal (search ,pattern (file-name-nondirectory s))
-                              0) 1100)
-                      ((search ,pattern (file-name-nondirectory s)) 1000)
-                      ((search ,pattern s) 750)
-                      (t nil)))
+   `(lambda (s)
+      (let ((position-in-basename (search ,pattern (file-name-nondirectory s))))
+        (cond ((equal position-in-basename 0) 1100)
+              (position-in-basename 1000)
+             ((search ,pattern s) 750)
+             (t nil))))
    `(lambda (s)
       (gff-score-fuzzily ,pattern s))))
 
