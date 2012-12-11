@@ -212,7 +212,7 @@ the position in the string of where they start."
         (score-fn (or score-fn 'gff-scorers-for)))
     (pop-to-buffer (get-buffer-create buffer-name))
 
-    (set (make-local-variable 'gff-list) (sort* (coerce files 'vector) 'string<))
+    (set (make-local-variable 'gff-list) files)
     (set (make-local-variable 'gff-list-size) (length gff-list))
     (set (make-local-variable 'gff-rotation) 0)
     (set (make-local-variable 'gff-active-filter) "")
@@ -238,22 +238,24 @@ the position in the string of where they start."
 
 (defun gff-filter-list (pattern list)
   "Find matches for `pattern' in `list' and return an ordered result set"
-  (let* ((scorers (funcall gff-score-function (downcase pattern)))
-         (scored-results (map 'vector (lambda (elt)
-                                        (cons (or (some (lambda (scorer)
-                                                          (funcall scorer (downcase elt)))
-                                                        scorers)
-                                                  0)
-                                              elt))
-                              list))
-         (sorted-results (sort*
-                          (remove-if-not 'plusp scored-results :key 'car)
-                          (lambda (r1 r2)
-                            ;; Higher score wins.  Shorter filename breaks the tie.
-                            (cond ((> (car r1) (car r2)) t)
-                                  ((< (car r1) (car r2)) nil)
-                                  (t (< (length (cdr r1)) (length (cdr r2)))))))))
-    (map 'vector 'cdr sorted-results)))
+  (if (equal pattern "")
+      list
+    (let* ((scorers (funcall gff-score-function (downcase pattern)))
+           (scored-results (map 'vector (lambda (elt)
+                                          (cons (or (some (lambda (scorer)
+                                                            (funcall scorer (downcase elt)))
+                                                          scorers)
+                                                    0)
+                                                elt))
+                                list))
+           (sorted-results (sort*
+                            (remove-if-not 'plusp scored-results :key 'car)
+                            (lambda (r1 r2)
+                              ;; Higher score wins.  Shorter filename breaks the tie.
+                              (cond ((> (car r1) (car r2)) t)
+                                    ((< (car r1) (car r2)) nil)
+                                    (t (< (length (cdr r1)) (length (cdr r2)))))))))
+      (map 'vector 'cdr sorted-results))))
 
 
 (defun gff-refresh-buffer ()
