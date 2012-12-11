@@ -133,13 +133,7 @@ the position in the string of where they start."
               (or (find-file-in-parent-dir ".git" default-directory)
                   (error "No .git directory found!"))))))
          (files (split-string
-                 (shell-command-to-string
-                  (concat "("
-                          ;; tracked files
-                          "git ls-files; "
-                          ;; and their directories
-                          "git ls-tree --name-only -rd HEAD"
-                          ")"))
+                 (shell-command-to-string "git ls-files")
                  "\n" t)))
     (gff-init files)))
 
@@ -206,6 +200,16 @@ the position in the string of where they start."
       (find-file selection))))
 
 
+(defun gff-select-dir ()
+  "Select the directory of the file at point"
+  (interactive)
+  (let ((dir default-directory)
+        (selection (buffer-substring (line-beginning-position) (line-end-position))))
+    (gff-exit)
+    (let ((default-directory dir))
+      (find-file (or (file-name-directory selection) ".")))))
+
+
 (defun gff-init (files &optional buffer-name score-fn)
   "Initialise the *git-find-file* buffer to display `files'."
   (let ((buffer-name (or buffer-name "*git-find-file*"))
@@ -228,6 +232,8 @@ the position in the string of where they start."
             do (define-key map (string i) 'gff-keypress))
       (define-key map (kbd "DEL") 'gff-backspace)
       (define-key map (kbd "RET") 'gff-select)
+      (define-key map (kbd "M-RET") 'gff-select-dir)
+      (define-key map [C-return] 'gff-select-dir)
       (define-key map (kbd "C-g") 'gff-exit)
       (define-key map (kbd "C-u") 'gff-reset)
       (define-key map (kbd "C-s") 'gff-rotate-list)
