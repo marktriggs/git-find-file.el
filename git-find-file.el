@@ -237,6 +237,7 @@ the position in the string of where they start."
       (loop for i from 32 to 127
             do (define-key map (string i) 'gff-keypress))
       (define-key map (kbd "DEL") 'gff-backspace)
+      (define-key map (kbd "TAB") 'gff-nested-search)
       (define-key map (kbd "RET") 'gff-select)
       (define-key map (kbd "M-RET") 'gff-select-dir)
       (define-key map [C-return] 'gff-select-dir)
@@ -268,6 +269,12 @@ the position in the string of where they start."
                                     ((< (car r1) (car r2)) nil)
                                     (t (< (length (cdr r1)) (length (cdr r2)))))))))
       (map 'vector 'cdr sorted-results))))
+
+
+(defun gff-nested-search ()
+  (interactive)
+  (setq gff-active-filter "")
+  (setq gff-last-active-filter ""))
 
 
 (defun gff-refresh-buffer ()
