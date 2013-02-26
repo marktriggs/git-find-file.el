@@ -123,6 +123,8 @@ the position in the string of where they start."
                                    (file-name-directory
                                     (directory-file-name dir))))))))
 
+(defvar gff-old-window-configuration nil)
+
 (defun git-find-file ()
   "Run an interactive search for all files in this repo."
   (interactive)
@@ -135,6 +137,7 @@ the position in the string of where they start."
          (files (split-string
                  (shell-command-to-string "git ls-files")
                  "\n" t)))
+    (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
     (gff-init files)))
 
 
@@ -180,7 +183,10 @@ the position in the string of where they start."
   "Bail out."
   (interactive)
   (kill-buffer nil)
-  (delete-window))
+  (when gff-old-window-configuration
+    (set-window-configuration (car gff-old-window-configuration))
+    (goto-char (marker-position (cadr gff-old-window-configuration)))
+    (setq gff-old-window-configuration nil)))
 
 
 (defun gff-rotate-list ()
