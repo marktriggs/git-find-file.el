@@ -60,6 +60,8 @@
   "Projects with more than this many files will delay updating the file list until `gff-input-delay' seconds have elapsed with no input.")
 (defvar gff-input-delay 0.5)
 
+(defvar gff-ignored-regexp "\\.(png|gif|jpg)$")
+
 
 (defun gff-start-of-match (pattern input)
   "If the letters of `pattern' appear in order in `input', return
@@ -135,7 +137,10 @@ the position in the string of where they start."
               (or (find-file-in-parent-dir ".git" default-directory)
                   (error "No .git directory found!"))))))
          (files (split-string
-                 (shell-command-to-string "git ls-files")
+                 (shell-command-to-string (format "git ls-files%s"
+                                                  (if gff-ignored-regexp
+                                                      (format "| egrep -v '%s'" gff-ignored-regexp)
+                                                    "")))
                  "\n" t)))
     (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
     (gff-init files)))
