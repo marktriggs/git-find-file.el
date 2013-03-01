@@ -86,16 +86,15 @@ the position in the string of where they start."
 (defun gff-score-fuzzily (pattern input)
   (destructuring-bind (match . letter-distance)
       (gff-start-of-match pattern input)
-    (let* ((basename-start (or (position ?/ input :from-end t)
-                               match))
-           (raw-score (cond ((not match) nil)
-                            ((= (1- match) basename-start) 650)
-                            ((> match basename-start)
-                             (if (string-match "[[:punct:]]" (string (elt input (1- match))))
-                                 600
-                               500))
-                            (t 300))))
-      (when raw-score
+    (when match
+      (let* ((basename-start (or (position ?/ input :from-end t)
+                                 match))
+             (raw-score (cond ((= (1- match) basename-start) 650)
+                              ((> match basename-start)
+                               (if (string-match "[[:punct:]]" (string (elt input (1- match))))
+                                   600
+                                 500))
+                              (t 300))))
         ;; Penalise results where the letters are some distance apart
         (- raw-score letter-distance)))))
 
@@ -107,8 +106,7 @@ the position in the string of where they start."
       (let ((position-in-basename (search ,pattern (file-name-nondirectory s))))
         (cond ((equal position-in-basename 0) 1100)
               (position-in-basename 1000)
-             ((search ,pattern s) 750)
-             (t nil))))
+              (t nil))))
    `(lambda (s)
       (gff-score-fuzzily ,pattern s))))
 
