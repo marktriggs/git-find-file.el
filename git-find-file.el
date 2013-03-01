@@ -299,7 +299,7 @@ the position in the string of where they start."
         (insert "(no matches)")
       (let ((rot 0))
         (dolist (line file-list)
-          (if (> rot gff-rotation)
+          (if (>= rot gff-rotation)
             (insert line "\n")
              (incf rot)))))
     (goto-char (point-min))))
