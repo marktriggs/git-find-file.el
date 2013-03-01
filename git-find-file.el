@@ -58,7 +58,7 @@
 
 (defvar gff-large-project-threshold 5000
   "Projects with more than this many files will delay updating the file list until `gff-input-delay' seconds have elapsed with no input.")
-(defvar gff-input-delay 0.2)
+(defvar gff-input-delay 0.5)
 
 
 (defun gff-start-of-match (pattern input)
@@ -254,13 +254,13 @@ the position in the string of where they start."
   (if (equal pattern "")
       list
     (let* ((scorers (funcall gff-score-function (downcase pattern)))
-           (scored-results (map 'vector (lambda (elt)
-                                          (cons (or (some (lambda (scorer)
-                                                            (funcall scorer (downcase elt)))
-                                                          scorers)
-                                                    0)
-                                                elt))
-                                list))
+           (scored-results (mapcar (lambda (elt)
+                                     (cons (or (some (lambda (scorer)
+                                                       (funcall scorer (downcase elt)))
+                                                     scorers)
+                                               0)
+                                           elt))
+                                   list))
            (sorted-results (sort*
                             (remove-if-not 'plusp scored-results :key 'car)
                             (lambda (r1 r2)
@@ -268,7 +268,7 @@ the position in the string of where they start."
                               (cond ((> (car r1) (car r2)) t)
                                     ((< (car r1) (car r2)) nil)
                                     (t (< (length (cdr r1)) (length (cdr r2)))))))))
-      (map 'vector 'cdr sorted-results))))
+      (mapcar 'cdr sorted-results))))
 
 
 (defun gff-nested-search ()
@@ -292,9 +292,11 @@ the position in the string of where they start."
     (erase-buffer)
     (if (zerop len)
         (insert "(no matches)")
-      (dotimes (i len)
-        (insert (elt file-list (mod (+ gff-rotation i) len))
-                "\n")))
+      (let ((rot 0))
+        (dolist (line file-list)
+          (if (> rot gff-rotation)
+            (insert line "\n")
+             (incf rot)))))
     (goto-char (point-min))))
 
 
