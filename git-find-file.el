@@ -168,6 +168,11 @@ the position in the string of where they start."
   (gff-update-filter `(lambda (s) (concat s ,(string last-input-char)))))
 
 
+(defun gff-yank ()
+  (interactive)
+  (gff-update-filter `(lambda (s) (concat s (current-kill 0 t)))))
+
+
 (defun gff-reset ()
   "Set the current filter string back to empty."
   (interactive)
@@ -244,6 +249,7 @@ the position in the string of where they start."
       (define-key map (kbd "RET") 'gff-select)
       (define-key map (kbd "M-RET") 'gff-select-dir)
       (define-key map [C-return] 'gff-select-dir)
+      (define-key map (kbd "C-y") 'gff-yank)
       (define-key map (kbd "C-g") 'gff-exit)
       (define-key map (kbd "C-u") 'gff-reset)
       (define-key map (kbd "C-s") 'gff-rotate-list)
