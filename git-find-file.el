@@ -128,14 +128,18 @@ the position in the string of where they start."
 (defun git-find-file ()
   "Run an interactive search for all files in this repo."
   (interactive)
-  (let* ((default-directory
+  (let* ((starting-directory default-directory)
+         (default-directory
            (file-truename
             (file-name-directory
              (expand-file-name
               (or (find-file-in-parent-dir ".git" default-directory)
                   (error "No .git directory found!"))))))
          (files (split-string
-                 (shell-command-to-string (format "git ls-files%s"
+                 (shell-command-to-string (format "git ls-files %s%s"
+                                                  (if current-prefix-arg
+                                                      starting-directory
+                                                    default-directory)
                                                   (if gff-ignored-regexp
                                                       (format "| egrep -v '%s'" gff-ignored-regexp)
                                                     "")))
