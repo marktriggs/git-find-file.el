@@ -256,7 +256,7 @@ the position in the string of where they start."
       (define-key map (kbd "C-y") 'gff-yank)
       (define-key map (kbd "C-g") 'gff-exit)
       (define-key map (kbd "C-u") 'gff-reset)
-      (define-key map (kbd "C-s") 'gff-rotate-list)
+      (define-key map (kbd "C-s") 'isearch-forward)
       (use-local-map map))
 
     (gff-refresh-buffer)))
