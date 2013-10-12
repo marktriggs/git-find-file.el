@@ -169,7 +169,7 @@ the position in the string of where they start."
 (defun gff-keypress ()
   "Record a keypress"
   (interactive)
-  (gff-update-filter `(lambda (s) (concat s ,(string last-input-char)))))
+  (gff-update-filter `(lambda (s) (concat s ,(string last-input-event)))))
 
 
 (defun gff-yank ()
