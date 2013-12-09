@@ -58,7 +58,7 @@
 
 (defvar gff-large-project-threshold 5000
   "Projects with more than this many files will delay updating the file list until `gff-input-delay' seconds have elapsed with no input.")
-(defvar gff-input-delay 0.5)
+(defvar gff-input-delay 0.20)
 
 (defvar gff-ignored-regexp "\\.(png|gif|jpg)$")
 
@@ -134,18 +134,11 @@ the position in the string of where they start."
             (file-name-directory
              (expand-file-name
               (or (find-file-in-parent-dir ".git" default-directory)
-                  (error "No .git directory found!"))))))
-         (files (split-string
-                 (shell-command-to-string (format "git ls-files %s%s"
-                                                  (if current-prefix-arg
-                                                      starting-directory
-                                                    default-directory)
-                                                  (if gff-ignored-regexp
-                                                      (format "| egrep -v '%s'" gff-ignored-regexp)
-                                                    "")))
-                 "\n" t)))
+                  (error "No .git directory found!")))))))
     (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
-    (gff-init files)))
+    (gff-init  (if current-prefix-arg
+                   starting-directory
+                 default-directory))))
 
 
 (defun gff-update-filter (fn)
@@ -228,20 +221,19 @@ the position in the string of where they start."
       (find-file (or (file-name-directory selection) ".")))))
 
 
-(defun gff-init (files &optional buffer-name score-fn)
+(defun gff-init (base-directory &optional buffer-name score-fn)
   "Initialise the *git-find-file* buffer to display `files'."
   (let ((buffer-name (or buffer-name "*git-find-file*"))
         (score-fn (or score-fn 'gff-scorers-for)))
     (pop-to-buffer (get-buffer-create buffer-name))
 
-    (set (make-local-variable 'gff-list) files)
-    (set (make-local-variable 'gff-list-size) (length gff-list))
+    (set (make-local-variable 'gff-base-directory)
+         base-directory)
+
     (set (make-local-variable 'gff-rotation) 0)
+    (set (make-local-variable 'gff-former-filters) ())
     (set (make-local-variable 'gff-active-filter) "")
     (set (make-local-variable 'gff-score-function) score-fn)
-
-    (set (make-local-variable 'gff-last-filtered-list) gff-list)
-    (set (make-local-variable 'gff-last-active-filter) "")
 
     (set (make-local-variable 'gff-keypress-timer) nil)
 
@@ -286,21 +278,35 @@ the position in the string of where they start."
 
 (defun gff-nested-search ()
   (interactive)
-  (setq gff-active-filter "")
-  (setq gff-last-active-filter ""))
+  (push gff-active-filter gff-former-filters)
+  (setq gff-active-filter ""))
+
+
+(defun gff-git-list-files ()
+  (let ((greps (mapcar (lambda (pattern)
+                         (format "egrep -i %s"
+                          (shell-quote-argument (if (string= pattern "")
+                                                    "."
+                                                  (mapconcat 'regexp-quote (split-string pattern "" t) ".*")))))
+                       (cons gff-active-filter gff-former-filters))))
+    (split-string
+     (shell-command-to-string (format "git ls-files %s%s | %s"
+                                      gff-base-directory
+                                      (if gff-ignored-regexp
+                                          (format "| egrep -v '%s'" gff-ignored-regexp)
+                                        "")
+                                      (mapconcat 'identity greps " | ")))
+     "\n" t)))
 
 
 (defun gff-refresh-buffer ()
   "Refresh the *git-find-file* buffer to show the current filtered list of files."
   (let* ((file-list (gff-filter-list gff-active-filter
-                                     (if (equal (search gff-last-active-filter gff-active-filter) 0)
-                                         ;; We can refine the last list instead of starting from scratch
-                                         gff-last-filtered-list
-                                       gff-list)))
+                                     (gff-git-list-files)))
          (len (length file-list)))
 
-    (setq gff-last-filtered-list file-list)
-    (setq gff-last-active-filter gff-active-filter)
+    (unless (boundp 'gff-list-size)
+      (set (make-local-variable 'gff-list-size) len))
 
     (erase-buffer)
     (if (zerop len)
