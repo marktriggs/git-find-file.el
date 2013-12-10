@@ -58,7 +58,7 @@
 
 (defvar gff-large-project-threshold 5000
   "Projects with more than this many files will delay updating the file list until `gff-input-delay' seconds have elapsed with no input.")
-(defvar gff-input-delay 0.20)
+(defvar gff-input-delay 0.10)
 
 (defvar gff-ignored-regexp "\\.(png|gif|jpg)$")
 
@@ -151,11 +151,10 @@ the position in the string of where they start."
 
 (defun gff-enqueue-refresh ()
   "Refresh the buffer once user input seems to have stopped"
-  (when gff-keypress-timer
-    (cancel-timer gff-keypress-timer))
   (if (> gff-list-size gff-large-project-threshold)
-      (setq gff-keypress-timer (run-at-time gff-input-delay nil
-                                            'gff-refresh-buffer))
+      (when (or (not gff-keypress-timer) (timer--triggered gff-keypress-timer))
+        (setq gff-keypress-timer (run-at-time gff-input-delay nil
+                                              'gff-refresh-buffer)))
     (gff-refresh-buffer)))
 
 
@@ -221,7 +220,7 @@ the position in the string of where they start."
       (find-file (or (file-name-directory selection) ".")))))
 
 
-(defun gff-init (base-directory &optional buffer-name score-fn)
+(defun gff-init (base-directory &optional buffer-name score-fn list-files-fn)
   "Initialise the *git-find-file* buffer to display `files'."
   (let ((buffer-name (or buffer-name "*git-find-file*"))
         (score-fn (or score-fn 'gff-scorers-for)))
@@ -229,6 +228,9 @@ the position in the string of where they start."
 
     (set (make-local-variable 'gff-base-directory)
          base-directory)
+
+    (set (make-local-variable 'gff-list-files-fn) (or list-files-fn
+                                                      'gff-git-list-files))
 
     (set (make-local-variable 'gff-rotation) 0)
     (set (make-local-variable 'gff-former-filters) ())
@@ -302,7 +304,7 @@ the position in the string of where they start."
 (defun gff-refresh-buffer ()
   "Refresh the *git-find-file* buffer to show the current filtered list of files."
   (let* ((file-list (gff-filter-list gff-active-filter
-                                     (gff-git-list-files)))
+                                     (funcall gff-list-files-fn)))
          (len (length file-list)))
 
     (unless (boundp 'gff-list-size)
@@ -314,8 +316,8 @@ the position in the string of where they start."
       (let ((rot 0))
         (dolist (line file-list)
           (if (>= rot gff-rotation)
-            (insert line "\n")
-             (incf rot)))))
+              (insert line "\n")
+            (incf rot)))))
     (goto-char (point-min))))
 
 
