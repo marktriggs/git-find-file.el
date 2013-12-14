@@ -125,6 +125,16 @@ the position in the string of where they start."
 
 (defvar gff-old-window-configuration nil)
 
+(defun gff-calculate-starting-directory (n default-dir toplevel-dir)
+  (let ((number-of-leading-dirs (length (split-string (file-truename (expand-file-name toplevel-dir)) "/" t))))
+    (concat "/"
+            (mapconcat 'identity
+                       (subseq (split-string (file-truename (expand-file-name default-dir)) "/" t)
+                               0 (+ number-of-leading-dirs n))
+                       "/"))))
+
+
+
 (defun git-find-file ()
   "Run an interactive search for all files in this repo."
   (interactive)
@@ -137,7 +147,7 @@ the position in the string of where they start."
                   (error "No .git directory found!")))))))
     (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
     (gff-init  (if current-prefix-arg
-                   starting-directory
+                   (gff-calculate-starting-directory current-prefix-arg starting-directory default-directory)
                  default-directory))))
 
 
