@@ -230,11 +230,17 @@ the position in the string of where they start."
       (find-file (or (file-name-directory selection) ".")))))
 
 
+(defun gff-pop-to-buffer (buffer)
+  (select-window (split-window-vertically))
+  (switch-to-buffer buffer))
+
+
 (defun gff-init (base-directory &optional buffer-name score-fn list-files-fn)
   "Initialise the *git-find-file* buffer to display `files'."
+  (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
   (let ((buffer-name (or buffer-name "*git-find-file*"))
         (score-fn (or score-fn 'gff-scorers-for)))
-    (pop-to-buffer (get-buffer-create buffer-name))
+    (gff-pop-to-buffer (get-buffer-create buffer-name))
 
     (set (make-local-variable 'gff-base-directory)
          base-directory)
