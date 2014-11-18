@@ -131,7 +131,8 @@ the position in the string of where they start."
             (mapconcat 'identity
                        (subseq (split-string (file-truename (expand-file-name default-dir)) "/" t)
                                0 (+ number-of-leading-dirs n))
-                       "/"))))
+                       "/")
+            "/")))
 
 
 
@@ -145,10 +146,9 @@ the position in the string of where they start."
              (expand-file-name
               (or (find-file-in-parent-dir ".git" default-directory)
                   (error "No .git directory found!")))))))
-    (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
-    (gff-init  (if current-prefix-arg
-                   (gff-calculate-starting-directory current-prefix-arg starting-directory default-directory)
-                 default-directory))))
+    (gff-init (if current-prefix-arg
+                  (gff-calculate-starting-directory current-prefix-arg starting-directory default-directory)
+                default-directory))))
 
 
 (defun gff-update-filter (fn)
@@ -199,7 +199,7 @@ the position in the string of where they start."
   (kill-buffer nil)
   (when gff-old-window-configuration
     (set-window-configuration (car gff-old-window-configuration))
-    (goto-char (marker-position (cadr gff-old-window-configuration)))
+    (goto-char (or (marker-position (cadr gff-old-window-configuration)) 0))
     (setq gff-old-window-configuration nil)))
 
 
