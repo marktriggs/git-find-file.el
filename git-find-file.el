@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t; -*-
+
 ;;; git-find-file.el --- Incremental search for files in a git repo
 ;;
 ;; Description: Modelled on Command-T from TextMate (I think).
@@ -60,7 +62,7 @@
   "Projects with more than this many files will delay updating the file list until `gff-input-delay' seconds have elapsed with no input.")
 (defvar gff-input-delay 0.10)
 
-(defvar gff-ignored-regexp "\\.(png|gif|jpg)$")
+(defvar gff-ignored-regexp nil)
 
 
 (defun gff-start-of-match (pattern input)
@@ -129,8 +131,8 @@ the position in the string of where they start."
   (let ((number-of-leading-dirs (length (split-string (file-truename (expand-file-name toplevel-dir)) "/" t))))
     (concat "/"
             (mapconcat 'identity
-                       (subseq (split-string (file-truename (expand-file-name default-dir)) "/" t)
-                               0 (+ number-of-leading-dirs n))
+                       (let ((bits (split-string (file-truename (expand-file-name default-dir)) "/" t)))
+                         (subseq bits 0 (min (+ number-of-leading-dirs n) (length bits))))
                        "/")
             "/")))
 
@@ -214,10 +216,11 @@ the position in the string of where they start."
   "Select the file at point"
   (interactive)
   (let ((dir default-directory)
-        (selection (buffer-substring (line-beginning-position) (line-end-position))))
+        (selection (buffer-substring (line-beginning-position) (line-end-position)))
+        (handle-fn gff-handle-select-fn))
     (gff-exit)
     (let ((default-directory dir))
-      (find-file selection))))
+      (funcall handle-fn selection))))
 
 
 (defun gff-select-dir ()
@@ -235,7 +238,7 @@ the position in the string of where they start."
   (switch-to-buffer buffer))
 
 
-(defun gff-init (base-directory &optional buffer-name score-fn list-files-fn)
+(defun gff-init (base-directory &optional buffer-name score-fn list-files-fn handle-select-fn tiebreak-mode)
   "Initialise the *git-find-file* buffer to display `files'."
   (setq gff-old-window-configuration (list (current-window-configuration) (point-marker)))
   (let ((buffer-name (or buffer-name "*git-find-file*"))
@@ -245,6 +248,8 @@ the position in the string of where they start."
     (set (make-local-variable 'gff-base-directory)
          base-directory)
 
+    (set (make-local-variable 'gff-tiebreak-mode) tiebreak-mode)
+
     (set (make-local-variable 'gff-list-files-fn) (or list-files-fn
                                                       'gff-git-list-files))
 
@@ -252,6 +257,8 @@ the position in the string of where they start."
     (set (make-local-variable 'gff-former-filters) ())
     (set (make-local-variable 'gff-active-filter) "")
     (set (make-local-variable 'gff-score-function) score-fn)
+    (set (make-local-variable 'gff-handle-select-fn)
+         (or handle-select-fn 'find-file))
 
     (set (make-local-variable 'gff-keypress-timer) nil)
 
@@ -272,33 +279,40 @@ the position in the string of where they start."
     (gff-refresh-buffer)))
 
 
+(defun gff-result-sorter (r1 r2)
+  ;; Higher score wins
+  (cond ((> (car r1) (car r2)) t)
+        ((< (car r1) (car r2)) nil)
+        (t
+         (if (eq gff-tiebreak-mode 'original-order)
+             nil
+           ;; shortest wins by default
+           (< (length (cdr r1)) (length (cdr r2))))
+         )))
+
 (defun gff-filter-list (pattern list)
   "Find matches for `pattern' in `list' and return an ordered result set"
   (if (equal pattern "")
       list
     (let* ((scorers (funcall gff-score-function (downcase pattern)))
-           (scored-results (mapcar (lambda (elt)
-                                     (cons (or (some (lambda (scorer)
-                                                       (funcall scorer (downcase elt)))
-                                                     scorers)
-                                               0)
-                                           elt))
-                                   list))
-           (sorted-results (sort*
-                            (remove-if-not 'plusp scored-results :key 'car)
-                            (lambda (r1 r2)
-                              ;; Higher score wins.  Shorter filename breaks the tie.
-                              (cond ((> (car r1) (car r2)) t)
-                                    ((< (car r1) (car r2)) nil)
-                                    (t (< (length (cdr r1)) (length (cdr r2)))))))))
+           (scored-results (cl-loop for elt in list
+                                    with score
+                                    do (setq score (or (some (lambda (scorer)
+                                                               (funcall scorer (downcase elt)))
+                                                             scorers)
+                                                       0))
+                                    if (plusp score)
+                                    collect (cons score elt)))
+           (sorted-results (stable-sort scored-results 'gff-result-sorter)))
       (mapcar 'cdr sorted-results))))
-
 
 (defun gff-nested-search ()
   (interactive)
   (push gff-active-filter gff-former-filters)
   (setq gff-active-filter ""))
 
+
+(defvar gff-ls-files-command "git ls-files")
 
 (defun gff-git-list-files ()
   (let ((greps (mapcar (lambda (pattern)
@@ -308,7 +322,8 @@ the position in the string of where they start."
                                                   (mapconcat 'regexp-quote (split-string pattern "" t) ".*")))))
                        (cons gff-active-filter gff-former-filters))))
     (split-string
-     (shell-command-to-string (format "git ls-files %s%s | %s"
+     (shell-command-to-string (format "%s %s%s | %s"
+                                      gff-ls-files-command
                                       gff-base-directory
                                       (if gff-ignored-regexp
                                           (format "| egrep -v '%s'" gff-ignored-regexp)
