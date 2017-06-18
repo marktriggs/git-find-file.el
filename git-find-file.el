@@ -245,6 +245,8 @@ the position in the string of where they start."
         (score-fn (or score-fn 'gff-scorers-for)))
     (gff-pop-to-buffer (get-buffer-create buffer-name))
 
+    (buffer-disable-undo nil)
+
     (set (make-local-variable 'gff-base-directory)
          base-directory)
 
@@ -315,28 +317,28 @@ the position in the string of where they start."
 (defvar gff-ls-files-command "git ls-files")
 
 (defun gff-git-list-files ()
-  (let ((greps (mapcar (lambda (pattern)
-                         (format "egrep -i %s"
-                          (shell-quote-argument (if (string= pattern "")
-                                                    "."
-                                                  (mapconcat 'regexp-quote (split-string pattern "" t) ".*")))))
-                       (cons gff-active-filter gff-former-filters))))
-    (split-string
-     (shell-command-to-string (format "%s %s%s | %s"
-                                      gff-ls-files-command
-                                      gff-base-directory
-                                      (if gff-ignored-regexp
-                                          (format "| egrep -v '%s'" gff-ignored-regexp)
-                                        "")
-                                      (mapconcat 'identity greps " | ")))
-     "\n" t)))
+  (let* ((greps (mapcar (lambda (pattern)
+                          (format "egrep -i %s"
+                                  (shell-quote-argument (if (string= pattern "")
+                                                            "."
+                                                          (mapconcat 'regexp-quote (split-string pattern "" t) ".*")))))
+                        (cons gff-active-filter gff-former-filters)))
+         (git-output (shell-command-to-string (format "%s %s%s | %s"
+                                                      gff-ls-files-command
+                                                      gff-base-directory
+                                                      (if gff-ignored-regexp
+                                                          (format "| egrep -v '%s'" gff-ignored-regexp)
+                                                        "")
+                                                      (mapconcat 'identity greps " | ")))))
+    (split-string git-output "\n" nil)))
 
 
 (defun gff-refresh-buffer ()
   "Refresh the *git-find-file* buffer to show the current filtered list of files."
   (let* ((file-list (gff-filter-list gff-active-filter
                                      (funcall gff-list-files-fn)))
-         (len (length file-list)))
+         (len (length file-list))
+         (inhibit-modification-hooks t))
 
     (unless (boundp 'gff-list-size)
       (set (make-local-variable 'gff-list-size) len))
