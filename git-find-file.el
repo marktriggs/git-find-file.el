@@ -60,7 +60,7 @@
 
 (defvar gff-large-project-threshold 5000
   "Projects with more than this many files will delay updating the file list until `gff-input-delay' seconds have elapsed with no input.")
-(defvar gff-input-delay 0.10)
+(defvar gff-input-delay 0.30)
 
 (defvar gff-ignored-regexp nil)
 
@@ -164,9 +164,10 @@ the position in the string of where they start."
 (defun gff-enqueue-refresh ()
   "Refresh the buffer once user input seems to have stopped"
   (if (> gff-list-size gff-large-project-threshold)
-      (when (or (not gff-keypress-timer) (timer--triggered gff-keypress-timer))
-        (setq gff-keypress-timer (run-at-time gff-input-delay nil
-                                              'gff-refresh-buffer)))
+      (progn (when gff-keypress-timer
+               (cancel-timer gff-keypress-timer))
+             (setq gff-keypress-timer (run-at-time gff-input-delay nil
+                                                   'gff-refresh-buffer)))
     (gff-refresh-buffer)))
 
 
