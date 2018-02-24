@@ -3,16 +3,16 @@
 use std::env;
 use std::io::{self, BufRead, Write};
 
-fn matches_pattern(needle: &str, haystack: &str) -> bool {
-    if needle == "" {
+fn matches_pattern(needle_chars: &Vec<u8>, haystack: &str) -> bool {
+    if needle_chars.len() == 0 {
         return true;
     }
 
     let mut needle_pos = 0;
-    let needle_len = needle.len();
+    let needle_len = needle_chars.len();
 
-    for ch in haystack.chars() {
-        if needle.chars().nth(needle_pos).unwrap() == ch {
+    for ch in haystack.bytes() {
+        if needle_chars[needle_pos] == ch {
             needle_pos += 1;
 
             if needle_pos == needle_len {
@@ -31,7 +31,9 @@ fn main() {
 
     let newline = "\n".as_bytes();
 
-    let patterns: Vec<String> = env::args().skip(1).map(|s| s.to_ascii_lowercase()).collect();
+    let patterns: Vec<Vec<u8>> = env::args().skip(1).map(|s| {
+        s.to_ascii_lowercase().bytes().collect()
+    }).collect();
 
     for line in stdin.lock().lines().map(Result::unwrap) {
         let lowercased = line.to_ascii_lowercase();
