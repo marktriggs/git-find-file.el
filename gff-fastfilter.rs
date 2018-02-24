@@ -31,14 +31,18 @@ fn main() {
 
     let newline = "\n".as_bytes();
 
-    let patterns: Vec<Vec<u8>> = env::args().skip(1).map(|s| {
-        s.to_ascii_lowercase().bytes().collect()
-    }).collect();
+    let patterns: Vec<Vec<u8>> = env::args()
+        .skip(1)
+        .map(|s| s.to_ascii_lowercase().bytes().collect())
+        .collect();
 
     for line in stdin.lock().lines().map(Result::unwrap) {
         let lowercased = line.to_ascii_lowercase();
 
-        if patterns.iter().all(|pattern| matches_pattern(&pattern, &lowercased)) {
+        if patterns
+            .iter()
+            .all(|pattern| matches_pattern(&pattern, &lowercased))
+        {
             out.write(line.as_bytes()).expect("write");
             out.write(newline).expect("newline");
         }
