@@ -318,19 +318,23 @@ the position in the string of where they start."
 (defvar gff-ls-files-command "git ls-files")
 
 (defun gff-git-list-files ()
-  (let* ((greps (mapcar (lambda (pattern)
-                          (format "egrep -i %s"
-                                  (shell-quote-argument (if (string= pattern "")
-                                                            "."
-                                                          (mapconcat 'regexp-quote (split-string pattern "" t) ".*")))))
-                        (cons gff-active-filter gff-former-filters)))
+  (let* ((fastfilter (executable-find "gff-fastfilter"))
+         (filter-cmd (if fastfilter
+                         (format "%s %s" fastfilter (mapconcat (lambda (s) (format "'%s'" s)) (cons gff-active-filter gff-former-filters) " "))
+                       (mapconcat (lambda (pattern)
+                                    (format "egrep -i %s"
+                                            (shell-quote-argument (if (string= pattern "")
+                                                                      "."
+                                                                    (mapconcat 'regexp-quote (split-string pattern "" t) ".*")))))
+                               (cons gff-active-filter gff-former-filters)
+                               " | ")))
          (git-output (shell-command-to-string (format "%s %s%s | %s"
                                                       gff-ls-files-command
                                                       gff-base-directory
                                                       (if gff-ignored-regexp
                                                           (format "| egrep -v '%s'" gff-ignored-regexp)
                                                         "")
-                                                      (mapconcat 'identity greps " | ")))))
+                                                      filter-cmd))))
     (split-string git-output "\n" nil)))
 
 
